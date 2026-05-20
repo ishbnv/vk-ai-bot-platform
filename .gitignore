@@ -1,0 +1,39 @@
+# Dependencies
+node_modules
+.pnpm-store
+
+# Build artifacts
+dist
+build
+*.tsbuildinfo
+
+# Env
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Editor
+.vscode
+.idea
+*.swp
+.DS_Store
+
+# Drizzle generated migrations meta
+apps/backend/drizzle/meta/_journal.json.bak
+
+# Docker volumes
+.docker-data
+
+# Coverage
+coverage
+.nyc_output
+
+# Cache
+.cache
+.turbo
+.eslintcache

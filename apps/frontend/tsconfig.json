@@ -1,0 +1,29 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "useDefineForClassFields": true,
+    "noEmit": true,
+    "types": ["vite/client"],
+    "baseUrl": ".",
+    "paths": {
+      "@app/*": ["src/app/*"],
+      "@pages": ["src/pages"],
+      "@pages/*": ["src/pages/*"],
+      "@features/*": ["src/features/*"],
+      "@entities": ["src/entities"],
+      "@entities/*": ["src/entities/*"],
+      "@shared": ["src/shared"],
+      "@shared/*": ["src/shared/*"],
+      "@shared/lib": ["src/shared/lib"],
+      "@ui/*": ["src/shared/ui/*"],
+      "@store": ["src/app/store"],
+      "@store/*": ["src/app/store/*"],
+      "shared-types": ["../../packages/shared-types/src"]
+    }
+  },
+  "include": ["src"]
+}

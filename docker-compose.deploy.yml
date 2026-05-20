@@ -1,0 +1,79 @@
+# Универсальный compose для VPS — параметризуется через env-файл.
+# Один файл для prod и dev; разделение через COMPOSE_PROJECT_NAME и BACKEND_HOST_PORT.
+#
+# Запуск:
+#   docker compose -f docker-compose.deploy.yml --env-file .env.prod up -d --build   # vk.24finkit.ru
+#   docker compose -f docker-compose.deploy.yml --env-file .env.dev  up -d --build   # vk.dev.24finkit.ru
+#
+# Изоляция стэков на одном хосте — через COMPOSE_PROJECT_NAME (vk-ai-bot-prod / vk-ai-bot-dev).
+# Volumes и сети именуются с этим префиксом → не пересекаются.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - internal
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - internal
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      PORT: 3000
+      PUBLIC_URL: ${PUBLIC_URL}
+      OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
+      OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+      VK_API_VERSION: ${VK_API_VERSION:-5.199}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+      ADMIN_LOGIN: ${ADMIN_LOGIN}
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH}
+    ports:
+      # BACKEND_HOST_PORT приходит из .env (3032 prod, 3042 dev) — nginx проксирует сюда.
+      - '127.0.0.1:${BACKEND_HOST_PORT}:3000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - internal
+
+volumes:
+  postgres-data:
+  redis-data:
+
+networks:
+  internal:
+    driver: bridge
