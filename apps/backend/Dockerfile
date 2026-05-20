@@ -14,7 +14,7 @@ WORKDIR /repo
 
 COPY --from=deps /repo/node_modules ./node_modules
 COPY --from=deps /repo/apps/backend/node_modules ./apps/backend/node_modules
-COPY --from=deps /repo/packages/shared-types/node_modules ./packages/shared-types/node_modules
+# shared-types — чистый TS-пакет без своих deps, отдельного node_modules у него нет.
 
 COPY pnpm-workspace.yaml package.json tsconfig.base.json ./
 COPY apps/backend ./apps/backend
