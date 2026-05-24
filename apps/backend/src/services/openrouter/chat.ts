@@ -23,7 +23,8 @@ export const chat = async ({
   model,
   messages,
   temperature = 0.7,
-  maxTokens = 500
+  // 500 на Gemini 2.5 Pro обрезает середину предложения — берём с запасом
+  maxTokens = 1500
 }: TChatArgs): Promise<TChatResult> => {
   const start = Date.now();
   const response = await openrouter.chat.completions.create({

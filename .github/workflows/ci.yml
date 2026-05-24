@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master, develop, dev]
+  pull_request:
+    branches: [main, master]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      # env.ts валидирует переменные через zod при загрузке модуля.
+      # Тесты импортируют код → env.ts должен парситься, иначе process.exit(1).
+      # Кладём dummy-значения, достаточные для прохождения схемы.
+      - name: Setup CI env
+        run: |
+          cat > .env <<'EOF'
+          NODE_ENV=test
+          LOG_LEVEL=error
+          PORT=3000
+          PUBLIC_URL=http://localhost:3000
+          DATABASE_URL=postgres://ci:ci@localhost:5432/ci
+          REDIS_URL=redis://localhost:6379
+          OPENROUTER_API_KEY=ci-test
+          OPENROUTER_BASE_URL=https://openrouter.ai/api/v1
+          VK_API_VERSION=5.199
+          ENCRYPTION_KEY=0000000000000000000000000000000000000000000000000000000000000000
+          JWT_SECRET=ci-test-secret-must-be-at-least-32-chars-long-aaaaaa
+          ADMIN_LOGIN=admin
+          ADMIN_PASSWORD_HASH=$2a$10$placeholderplaceholderplaceholderplaceholderplaceholder.
+          EOF
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Test
+        run: pnpm test
+
+      - name: Build frontend
+        run: pnpm -C apps/frontend build

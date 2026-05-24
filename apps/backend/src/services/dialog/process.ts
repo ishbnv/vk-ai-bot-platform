@@ -4,17 +4,26 @@ import { db } from '@/db/client';
 import { communities, dialogs, messages, prompts } from '@/db/schema';
 import { logger } from '@/lib/logger';
 import { decrypt } from '@/lib/crypto';
+import { redisConnection } from '@/lib/redis';
 import { chat } from '@/services/openrouter';
-import { usersGet, messagesSend } from '@/services/vk';
+import { usersGet, messagesSend, VkApiError } from '@/services/vk';
 import { nudgeQueue, type TDialogJob } from '@/queues';
 
 import { buildContext } from './context';
 import { replacePlaceholders } from './placeholders';
 
 export const processDialogJob = async (data: TDialogJob): Promise<void> => {
-  const { communityId, event } = data;
+  const { communityId, event, eventId } = data;
   const vkUserId = event.message.from_id;
   const userText = event.message.text;
+
+  // 0. Idempotency — гарантия что один VK event обработается ровно один раз даже при retry.
+  // SETNX с TTL 1h: первый job получает 'OK', повторные (после throw в любой точке ниже) — null.
+  const claim = await redisConnection.set(`dialog:processed:${eventId}`, '1', 'EX', 3600, 'NX');
+  if (claim !== 'OK') {
+    logger.info({ eventId, communityId }, 'Event already processed — skipping');
+    return;
+  }
 
   // 1. Load community
   const [community] = await db
@@ -153,12 +162,33 @@ export const processDialogJob = async (data: TDialogJob): Promise<void> => {
     })
     .where(eq(dialogs.id, dialog.id));
 
-  // 12. Send to VK
-  await messagesSend(decryptedToken, {
-    userId: vkUserId,
-    message: finalText,
-    dontParseLinks: false
-  });
+  // 12. Send to VK — пропускаем пустой текст и не ретраим permanent-ошибки.
+  if (!finalText.trim()) {
+    logger.warn(
+      { dialogId: dialog.id, model, eventId },
+      'LLM returned empty text — assistant msg saved, ВК не зовём'
+    );
+  } else {
+    try {
+      await messagesSend(decryptedToken, {
+        userId: vkUserId,
+        message: finalText,
+        dontParseLinks: false
+      });
+    } catch (err) {
+      // VK error 100 = "message is empty or invalid" — это валидационная ошибка
+      // (например финальный текст с маркером форматирования, которое ВК не принимает),
+      // ретраить нет смысла: будет тот же результат и снова дубль в БД.
+      if (err instanceof VkApiError && err.code === 100) {
+        logger.error(
+          { err, dialogId: dialog.id, message: finalText, eventId },
+          'VK rejected message (error 100), завершаем job без retry'
+        );
+        return;
+      }
+      throw err;
+    }
+  }
 
   // 13. Schedule nudge
   if (community.nudge_delay_hours > 0) {

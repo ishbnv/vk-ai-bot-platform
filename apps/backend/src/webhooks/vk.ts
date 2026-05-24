@@ -74,7 +74,8 @@ export const vkWebhookRoutes = async (app: FastifyInstance) => {
       await dialogQueue.add('process', {
         communityId: community.id,
         event: objectParsed.data,
-        receivedAt: new Date().toISOString()
+        receivedAt: new Date().toISOString(),
+        eventId: event.event_id
       } satisfies TDialogJob);
     } else {
       logger.debug({ type: event.type }, 'Unhandled VK event type');

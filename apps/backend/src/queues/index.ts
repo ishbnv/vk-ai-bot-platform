@@ -67,6 +67,8 @@ export type TDialogJob = {
   communityId: string;
   event: TVkMessageNew;
   receivedAt: string;
+  // event_id из ВК — для идемпотентности worker'а при retry'ях BullMQ
+  eventId: string;
 };
 
 export type TNudgeJob = {
