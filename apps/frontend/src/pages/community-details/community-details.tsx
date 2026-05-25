@@ -97,7 +97,7 @@ export const CommunityDetails: FC = () => {
         <Tabs.List>
           <Tabs.Tab value='settings'>Настройки</Tabs.Tab>
           <Tabs.Tab value='prompt'>Промпт</Tabs.Tab>
-          <Tabs.Tab value='links'>Ссылки</Tabs.Tab>
+          <Tabs.Tab value='links'>Витрины</Tabs.Tab>
           <Tabs.Tab value='packs'>Пачки</Tabs.Tab>
         </Tabs.List>
 

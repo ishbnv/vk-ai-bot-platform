@@ -59,6 +59,8 @@ export type TVkMessageNew = {
     peer_id: number;
     date: number;
     text: string;
+    ref?: string;
+    ref_source?: string;
     attachments?: Array<{ type: string; [key: string]: unknown }>;
   };
 };

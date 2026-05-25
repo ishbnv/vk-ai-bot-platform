@@ -39,10 +39,10 @@ export const ManageLandingLinks: FC<TProps> = ({ communityId }) => {
   };
 
   const onDelete = async (link: TLandingLink) => {
-    if (!window.confirm(`Удалить ссылку «${link.name}»?`)) return;
+    if (!window.confirm(`Удалить витрину «${link.name}»?`)) return;
     try {
       await del({ communityId, linkId: link.id }).unwrap();
-      notifications.show({ message: 'Ссылка удалена', color: 'green' });
+      notifications.show({ message: 'Витрина удалена', color: 'green' });
     } catch {
       notifications.show({ message: 'Не удалось удалить', color: 'red' });
     }
@@ -53,14 +53,17 @@ export const ManageLandingLinks: FC<TProps> = ({ communityId }) => {
   return (
     <Stack gap='md'>
       <Group justify='space-between' align='center'>
-        <Title order={4}>Landing-ссылки</Title>
+        <Title order={4}>Витрины</Title>
         <Button leftSection={<IconPlus size={16} />} onClick={openCreate}>
-          Добавить ссылку
+          Добавить витрину
         </Button>
       </Group>
 
       {links.length === 0 ? (
-        <Text c='dimmed'>Ссылок ещё нет. Бот не сможет подставить URL в плейсхолдер, пока не добавишь.</Text>
+        <Text c='dimmed'>
+          Витрин ещё нет. Бот не сможет подставить URL в плейсхолдер {'{{LINK_SHOWCASE}}'},
+          пока не добавишь хотя бы одну.
+        </Text>
       ) : (
         <Table withTableBorder striped highlightOnHover>
           <Table.Thead>

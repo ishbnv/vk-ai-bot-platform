@@ -71,6 +71,9 @@ export const processDialogJob = async (data: TDialogJob): Promise<void> => {
         vk_user_id: vkUserId,
         vk_user_first_name: firstName,
         vk_user_last_name: lastName,
+        // VK Ads ref-tags из первого сообщения. Дальше не перезаписываем.
+        ref: event.message.ref ?? null,
+        ref_source: event.message.ref_source ?? null,
         bucket_model: community.active_model, // фиксируем модель для диалога (A/B — v2)
         status: 'active',
         last_message_at: new Date()
@@ -145,11 +148,14 @@ export const processDialogJob = async (data: TDialogJob): Promise<void> => {
   );
 
   // 10b. Replace {{NEXT_PACK}} на готовую пачку офферов — если LLM её попросила.
-  const { text: finalText, consumed: packConsumed } = await replaceNextPackPlaceholder(
-    textWithLinks,
+  const { text: finalText, consumed: packConsumed } = await replaceNextPackPlaceholder({
+    text: textWithLinks,
     communityId,
-    dialog.packs_sent_count
-  );
+    packsSentCount: dialog.packs_sent_count,
+    vkUserId,
+    ref: dialog.ref,
+    refSource: dialog.ref_source
+  });
 
   // 11. Save assistant message + update dialog totals
   await db.insert(messages).values({

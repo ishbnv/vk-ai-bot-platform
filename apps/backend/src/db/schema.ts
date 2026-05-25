@@ -125,6 +125,10 @@ export const dialogs = pgTable(
     vk_user_id: bigint('vk_user_id', { mode: 'number' }).notNull(),
     vk_user_first_name: text('vk_user_first_name'),
     vk_user_last_name: text('vk_user_last_name'),
+    // VK Ads ref-tags из первого message_new (если юзер пришёл по рекламной ссылке).
+    // Замораживаются на первом сообщении и переиспользуются в UTM витрины и пачек.
+    ref: text('ref'),
+    ref_source: text('ref_source'),
     status: text('status').$type<TDialogStatus>().notNull().default('active'),
     bucket_model: text('bucket_model'),
     total_messages: integer('total_messages').notNull().default(0),

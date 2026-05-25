@@ -14,6 +14,8 @@ import {
 } from '@/services/vk';
 import { BASE_SYSTEM_PROMPT } from '@/services/prompts/template';
 
+import { seedDefaultOfferPacks } from './seed-default-packs';
+
 type TConnectArgs = {
   vkGroupId: number;
   vkAccessToken: string;
@@ -69,6 +71,14 @@ export const connectCommunity = async ({
   });
 
   if (!community) throw new Error('Community not created');
+
+  // 4.5. Сидим дефолтные пачки офферов (4 priority-списка из старой n8n-сборки).
+  // Если упало — community/prompt уже сохранены, не критично, в админке можно добавить руками.
+  try {
+    await seedDefaultOfferPacks(community.id);
+  } catch (err) {
+    logger.warn({ err, communityId: community.id }, 'seed default offer packs failed');
+  }
 
   // 5. Регистрация callback на стороне VK — после INSERT, иначе confirmation request придёт раньше БД.
   try {

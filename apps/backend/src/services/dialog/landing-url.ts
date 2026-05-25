@@ -1,23 +1,28 @@
-type TUtm = {
-  utm_source: string;
-  utm_medium: string;
-  utm_campaign: string;
+type TBuildArgs = {
+  baseUrl: string;
+  // utm_source — единственная UTM, которую задаёт админ в карточке витрины.
+  // Остальные подставляются автоматически из контекста диалога.
+  utmSource: string;
+  // Из VK Ads ref-tags (хранятся в dialogs.ref/.ref_source). Пусто если органика.
+  ref?: string | null;
+  refSource?: string | null;
+  vkUserId: number;
 };
 
-type TExtras = {
-  vkUserId?: number;
-  dialogId?: string;
-};
-
-// Строит URL для редиректа на витрину МФО:
-// base_url + существующие query base_url + utm_* + vk_uid + dialog_id.
-// utm-поля пустые — пропускаются (МФО может уже иметь свои в base_url).
-export const buildLandingUrl = (baseUrl: string, utm: TUtm, extras: TExtras = {}): string => {
+// Шаблон витрины: base_url + ?utm_source=<source>&utm_campaign=<ref>&utm_content=<ref_source>&utm_term=<vk_user_id>.
+// Пустые ref/ref_source отдаём пустыми строками — старое n8n-поведение,
+// партнёрке так проще их фильтровать как "органика".
+export const buildLandingUrl = ({
+  baseUrl,
+  utmSource,
+  ref,
+  refSource,
+  vkUserId
+}: TBuildArgs): string => {
   const url = new URL(baseUrl);
-  if (utm.utm_source) url.searchParams.set('utm_source', utm.utm_source);
-  if (utm.utm_medium) url.searchParams.set('utm_medium', utm.utm_medium);
-  if (utm.utm_campaign) url.searchParams.set('utm_campaign', utm.utm_campaign);
-  if (extras.vkUserId !== undefined) url.searchParams.set('vk_uid', String(extras.vkUserId));
-  if (extras.dialogId) url.searchParams.set('dialog_id', extras.dialogId);
+  url.searchParams.set('utm_source', utmSource);
+  url.searchParams.set('utm_campaign', ref ?? '');
+  url.searchParams.set('utm_content', refSource ?? '');
+  url.searchParams.set('utm_term', String(vkUserId));
   return url.toString();
 };

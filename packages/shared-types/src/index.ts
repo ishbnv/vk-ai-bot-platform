@@ -127,6 +127,8 @@ export type TDialog = {
   vk_user_id: number;
   vk_user_first_name: string | null;
   vk_user_last_name: string | null;
+  ref: string | null;
+  ref_source: string | null;
   status: TDialogStatus;
   bucket_model: string | null;
   total_messages: number;

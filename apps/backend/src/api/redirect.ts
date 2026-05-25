@@ -29,35 +29,47 @@ export const redirectRoutes = async (app: FastifyInstance) => {
     const vkUid = query.success ? query.data.vk_uid : undefined;
     const dialogId = query.success ? query.data.dialog_id : undefined;
 
-    // Фиксируем конверсию только если есть валидный dialog_id, диалог принадлежит этому
-    // community и ещё не помечен converted_at — первый клик выигрывает.
+    let dialogRef: string | null = null;
+    let dialogRefSource: string | null = null;
+
+    // Если есть валидный dialog_id, диалог принадлежит этому community —
+    // (а) забираем ref/ref_source для UTM, (б) фиксируем первую конверсию.
     if (dialogId) {
       try {
-        await db
-          .update(dialogs)
-          .set({ converted_at: sql`NOW()`, conversion_link_id: link.id })
-          .where(
-            and(
-              eq(dialogs.id, dialogId),
-              eq(dialogs.community_id, link.community_id),
-              isNull(dialogs.converted_at)
-            )
-          );
+        const [dialog] = await db
+          .select({
+            id: dialogs.id,
+            ref: dialogs.ref,
+            ref_source: dialogs.ref_source,
+            converted_at: dialogs.converted_at
+          })
+          .from(dialogs)
+          .where(and(eq(dialogs.id, dialogId), eq(dialogs.community_id, link.community_id)))
+          .limit(1);
+
+        if (dialog) {
+          dialogRef = dialog.ref;
+          dialogRefSource = dialog.ref_source;
+          if (!dialog.converted_at) {
+            await db
+              .update(dialogs)
+              .set({ converted_at: sql`NOW()`, conversion_link_id: link.id })
+              .where(and(eq(dialogs.id, dialogId), isNull(dialogs.converted_at)));
+          }
+        }
       } catch (err) {
         // Логируем, но всё равно редиректим — пользователь не виноват в нашей ошибке БД.
-        logger.warn({ err, dialogId, linkId: link.id }, 'Failed to record conversion');
+        logger.warn({ err, dialogId, linkId: link.id }, 'Failed to load dialog / record conversion');
       }
     }
 
-    const target = buildLandingUrl(
-      link.base_url,
-      {
-        utm_source: link.utm_source,
-        utm_medium: link.utm_medium,
-        utm_campaign: link.utm_campaign
-      },
-      { vkUserId: vkUid, dialogId }
-    );
+    const target = buildLandingUrl({
+      baseUrl: link.base_url,
+      utmSource: link.utm_source,
+      ref: dialogRef,
+      refSource: dialogRefSource,
+      vkUserId: vkUid ?? 0
+    });
 
     return reply.redirect(target, 302);
   });

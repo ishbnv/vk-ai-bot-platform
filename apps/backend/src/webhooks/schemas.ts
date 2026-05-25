@@ -18,6 +18,10 @@ export const vkMessageNewObjectSchema = z.object({
     peer_id: z.number().int(),
     date: z.number().int(),
     text: z.string(),
+    // VK Ads ref-tags — приходят только в первом message_new диалога,
+    // когда юзер пришёл по рекламной ссылке вида /im?sel=-XXX&ref=ad_yyy
+    ref: z.string().optional(),
+    ref_source: z.string().optional(),
     attachments: z
       .array(z.object({ type: z.string() }).passthrough())
       .optional()
