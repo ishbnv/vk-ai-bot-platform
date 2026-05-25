@@ -18,12 +18,10 @@ COMPOSE_FILE=docker-compose.deploy.yml
 case "$ENV" in
   prod)
     ENV_FILE=.env.prod
-    NGINX_CONF=deploy/nginx/vk.24finkit.ru.conf
     FRONT_DIR=/var/www/vk-ai-bot-platform/frontend
     ;;
   dev)
     ENV_FILE=.env.dev
-    NGINX_CONF=deploy/nginx/vk.dev.24finkit.ru.conf
     FRONT_DIR=/var/www/vk-ai-bot-platform-dev/frontend
     ;;
   *)
@@ -60,16 +58,11 @@ docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" up -d --build
 echo "==> [$ENV] db migrate"
 docker compose -f "$COMPOSE_FILE" --env-file "$ENV_FILE" exec -T backend pnpm db:migrate
 
-echo "==> [$ENV] reload nginx (if config changed)"
-if ! sudo cmp -s "$NGINX_CONF" "/etc/nginx/sites-available/$(basename "$NGINX_CONF")"; then
-  sudo cp "$NGINX_CONF" "/etc/nginx/sites-available/"
-  sudo ln -sf "/etc/nginx/sites-available/$(basename "$NGINX_CONF")" \
-              "/etc/nginx/sites-enabled/$(basename "$NGINX_CONF")"
-  sudo nginx -t
-  sudo systemctl reload nginx
-  echo "    nginx reloaded"
-else
-  echo "    nginx config unchanged"
-fi
+# nginx-конфиги — это инфраструктура, не часть приложения. Меняются редко,
+# обычно после certbot (он сам добавляет SSL-блок). Если правил deploy/nginx/*.conf
+# в репо — синкни руками:
+#   sudo cp deploy/nginx/vk.24finkit.ru.conf /etc/nginx/sites-available/
+#   sudo certbot install --cert-name vk.24finkit.ru   # вернуть SSL
+#   sudo nginx -t && sudo systemctl reload nginx
 
 echo "==> [$ENV] done"
