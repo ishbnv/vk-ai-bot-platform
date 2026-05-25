@@ -1,0 +1,1 @@
+ALTER TABLE "communities" ADD COLUMN "use_direct_links" boolean DEFAULT false NOT NULL;

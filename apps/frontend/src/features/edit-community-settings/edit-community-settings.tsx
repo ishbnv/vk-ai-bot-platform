@@ -28,7 +28,8 @@ const schema = z.object({
   nudge_delay_hours: z.number().int().min(0).max(72),
   completion_silence_hours: z.number().int().min(1).max(720),
   context_window_messages: z.number().int().min(1).max(50),
-  context_token_limit: z.number().int().min(500).max(32_000)
+  context_token_limit: z.number().int().min(500).max(32_000),
+  use_direct_links: z.boolean()
 });
 type TForm = z.infer<typeof schema>;
 
@@ -55,7 +56,8 @@ export const EditCommunitySettings: FC<TProps> = ({ community }) => {
       nudge_delay_hours: community.nudge_delay_hours,
       completion_silence_hours: community.completion_silence_hours,
       context_window_messages: community.context_window_messages,
-      context_token_limit: community.context_token_limit
+      context_token_limit: community.context_token_limit,
+      use_direct_links: community.use_direct_links
     }
   });
 
@@ -98,6 +100,18 @@ export const EditCommunitySettings: FC<TProps> = ({ community }) => {
             <Switch
               label='Бот активен'
               description='Если выключить — webhook продолжит приходить, но ответы отправляться не будут'
+              checked={field.value}
+              onChange={(e) => field.onChange(e.currentTarget.checked)}
+            />
+          )}
+        />
+        <Controller
+          control={control}
+          name='use_direct_links'
+          render={({ field }) => (
+            <Switch
+              label='Прямые ссылки на витрину (без редиректа)'
+              description='ВКЛ: бот шлёт сразу URL витрины с UTM (короче, но converted_at не фиксируется — метрика конверсии перестаёт работать). ВЫКЛ: через /r/<id> с трекингом клика.'
               checked={field.value}
               onChange={(e) => field.onChange(e.currentTarget.checked)}
             />

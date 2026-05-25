@@ -48,6 +48,9 @@ export const communities = pgTable(
     context_token_limit: integer('context_token_limit').notNull().default(4000),
     vk_photos_enabled: boolean('vk_photos_enabled').notNull().default(false),
     vk_voice_enabled: boolean('vk_voice_enabled').notNull().default(false),
+    // true — {{LINK_SHOWCASE}} раскрывается в прямой URL с UTM (короткий, но без трекинга
+    // converted_at). false — через /r/<linkId> (длиннее, но фиксируется первый клик).
+    use_direct_links: boolean('use_direct_links').notNull().default(false),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
   },

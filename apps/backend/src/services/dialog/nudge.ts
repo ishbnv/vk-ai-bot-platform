@@ -86,12 +86,15 @@ export const processNudgeJob = async (data: TNudgeJob): Promise<void> => {
   const result = await chat({ model, messages: chatMessages });
 
   // 6. Replace placeholders (в инструкции мы просим их не вставлять, но защита не помешает)
-  const { text: finalText, linkSentId } = await replacePlaceholders(
-    result.content,
+  const { text: finalText, linkSentId } = await replacePlaceholders({
+    text: result.content,
     communityId,
-    dialog.id,
-    dialog.vk_user_id
-  );
+    dialogId: dialog.id,
+    vkUserId: dialog.vk_user_id,
+    bypassRedirect: community.use_direct_links,
+    ref: dialog.ref,
+    refSource: dialog.ref_source
+  });
 
   // 7. Save assistant message + bump dialog
   await db.insert(messages).values({

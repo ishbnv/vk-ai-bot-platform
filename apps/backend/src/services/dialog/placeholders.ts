@@ -4,6 +4,8 @@ import { db } from '@/db/client';
 import { landing_links } from '@/db/schema';
 import { env } from '@/env';
 
+import { buildLandingUrl } from './landing-url';
+
 const PLACEHOLDER_REGEX = /\{\{(LINK_[A-Z0-9_]+)\}\}/g;
 
 // --- pure helpers (легко тестировать) ---
@@ -38,23 +40,30 @@ export const applyReplacements = (
 
 // --- сервисная функция (читает БД) ---
 
+type TReplaceArgs = {
+  text: string;
+  communityId: string;
+  dialogId: string;
+  vkUserId: number;
+  // true → подставляем сразу полный URL с UTM (короткий, но без converted_at трекинга).
+  // false → через redirect /r/<linkId> (длиннее, но фиксируется первый клик).
+  bypassRedirect: boolean;
+  ref: string | null;
+  refSource: string | null;
+};
+
 type TReplaceResult = { text: string; linkSentId: string | null };
 
-export const replacePlaceholders = async (
-  text: string,
-  communityId: string,
-  dialogId: string,
-  vkUserId: number
-): Promise<TReplaceResult> => {
-  const keys = extractPlaceholders(text);
-  if (keys.length === 0) return { text, linkSentId: null };
+export const replacePlaceholders = async (args: TReplaceArgs): Promise<TReplaceResult> => {
+  const keys = extractPlaceholders(args.text);
+  if (keys.length === 0) return { text: args.text, linkSentId: null };
 
   const links = await db
     .select()
     .from(landing_links)
     .where(
       and(
-        eq(landing_links.community_id, communityId),
+        eq(landing_links.community_id, args.communityId),
         eq(landing_links.is_active, true),
         inArray(landing_links.placeholder_key, keys)
       )
@@ -64,19 +73,20 @@ export const replacePlaceholders = async (
   let linkSentId: string | null = null;
 
   for (const link of links) {
-    replacements[link.placeholder_key] = buildRedirectUrl(
-      env.PUBLIC_URL,
-      link.id,
-      vkUserId,
-      dialogId
-    );
-    // Фиксируем первый подставленный link — спека требует "не более одного link за диалог",
-    // но защита от множественных placeholder'ов в одном ответе не нужна на стороне worker'а.
+    replacements[link.placeholder_key] = args.bypassRedirect
+      ? buildLandingUrl({
+          baseUrl: link.base_url,
+          utmSource: link.utm_source,
+          ref: args.ref,
+          refSource: args.refSource,
+          vkUserId: args.vkUserId
+        })
+      : buildRedirectUrl(env.PUBLIC_URL, link.id, args.vkUserId, args.dialogId);
     if (!linkSentId) linkSentId = link.id;
   }
 
   return {
-    text: applyReplacements(text, replacements),
+    text: applyReplacements(args.text, replacements),
     linkSentId
   };
 };

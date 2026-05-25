@@ -139,13 +139,17 @@ export const processDialogJob = async (data: TDialogJob): Promise<void> => {
   // 9. Call OpenRouter
   const result = await chat({ model, messages: chatMessages });
 
-  // 10a. Replace LINK_* плейсхолдеры на UTM-ссылки через redirect-эндпоинт
-  const { text: textWithLinks, linkSentId } = await replacePlaceholders(
-    result.content,
+  // 10a. Replace LINK_* плейсхолдеры. Ветка зависит от community.use_direct_links:
+  // прямой URL (нет converted_at трекинга) vs /r/<id> redirect (фиксируем клик).
+  const { text: textWithLinks, linkSentId } = await replacePlaceholders({
+    text: result.content,
     communityId,
-    dialog.id,
-    vkUserId
-  );
+    dialogId: dialog.id,
+    vkUserId,
+    bypassRedirect: community.use_direct_links,
+    ref: dialog.ref,
+    refSource: dialog.ref_source
+  });
 
   // 10b. Replace {{NEXT_PACK}} на готовую пачку офферов — если LLM её попросила.
   const { text: finalText, consumed: packConsumed } = await replaceNextPackPlaceholder({

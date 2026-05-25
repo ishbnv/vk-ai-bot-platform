@@ -25,6 +25,7 @@ const publicFields = {
   forbidden_topics: communities.forbidden_topics,
   vk_photos_enabled: communities.vk_photos_enabled,
   vk_voice_enabled: communities.vk_voice_enabled,
+  use_direct_links: communities.use_direct_links,
   created_at: communities.created_at,
   updated_at: communities.updated_at
 };
@@ -50,7 +51,8 @@ const patchSchema = z
     context_token_limit: z.number().int().min(500).max(32_000),
     forbidden_topics: z.array(z.string()),
     vk_photos_enabled: z.boolean(),
-    vk_voice_enabled: z.boolean()
+    vk_voice_enabled: z.boolean(),
+    use_direct_links: z.boolean()
   })
   .partial();
 

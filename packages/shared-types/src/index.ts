@@ -38,6 +38,7 @@ export type TCommunity = {
   forbidden_topics: string[];
   vk_photos_enabled: boolean;
   vk_voice_enabled: boolean;
+  use_direct_links: boolean;
   created_at: string;
   updated_at: string;
 };
@@ -65,6 +66,7 @@ export type TPatchCommunityRequest = Partial<
     | 'forbidden_topics'
     | 'vk_photos_enabled'
     | 'vk_voice_enabled'
+    | 'use_direct_links'
   >
 >;
 
