@@ -1,0 +1,71 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main, dev]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Куда деплоить'
+        required: true
+        type: choice
+        options: [prod, dev]
+
+# По одной выкатке на окружение одновременно. Не отменяем — даём ей доехать.
+concurrency:
+  group: deploy-${{ github.event_name == 'workflow_dispatch' && inputs.environment || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  ci:
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    needs: ci
+    runs-on: ubuntu-latest
+    # Привязка к GitHub Environments — туда можно навесить required reviewers для prod.
+    environment:
+      name: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || (github.ref_name == 'main' && 'prod' || 'dev') }}
+
+    steps:
+      - name: Resolve target
+        id: target
+        run: |
+          set -euo pipefail
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            ENV="${{ inputs.environment }}"
+          elif [[ "${{ github.ref_name }}" == "main" ]]; then
+            ENV="prod"
+          else
+            ENV="dev"
+          fi
+          case "$ENV" in
+            prod)
+              echo "env=prod"   >> "$GITHUB_OUTPUT"
+              echo "branch=main" >> "$GITHUB_OUTPUT"
+              echo "path=/opt/vk-ai-bot-platform" >> "$GITHUB_OUTPUT"
+              ;;
+            dev)
+              echo "env=dev"   >> "$GITHUB_OUTPUT"
+              echo "branch=dev" >> "$GITHUB_OUTPUT"
+              echo "path=/opt/vk-ai-bot-platform-dev" >> "$GITHUB_OUTPUT"
+              ;;
+          esac
+
+      - name: SSH deploy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          port: ${{ secrets.VPS_PORT || 22 }}
+          command_timeout: 30m
+          script: |
+            set -euo pipefail
+            cd ${{ steps.target.outputs.path }}
+            git fetch origin
+            git checkout ${{ steps.target.outputs.branch }}
+            git reset --hard origin/${{ steps.target.outputs.branch }}
+            # DEPLOY_SKIP_PULL=1 — CI уже привёл репо к нужному коммиту,
+            # не даём deploy.sh повторно дёргать git pull
+            DEPLOY_SKIP_PULL=1 bash deploy/deploy.sh ${{ steps.target.outputs.env }}

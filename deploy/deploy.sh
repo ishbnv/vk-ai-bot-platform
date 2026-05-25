@@ -37,8 +37,12 @@ if [[ ! -f "$ENV_FILE" ]]; then
   exit 1
 fi
 
-echo "==> [$ENV] git pull"
-git pull --ff-only
+if [[ "${DEPLOY_SKIP_PULL:-0}" != "1" ]]; then
+  echo "==> [$ENV] git pull"
+  git pull --ff-only
+else
+  echo "==> [$ENV] skip git pull (DEPLOY_SKIP_PULL=1, выкатывает CI)"
+fi
 
 echo "==> [$ENV] pnpm install"
 pnpm install --frozen-lockfile
