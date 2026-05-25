@@ -44,7 +44,7 @@ export const processNudgeJob = async (data: TNudgeJob): Promise<void> => {
     await nudgeQueue.add(
       'send-nudge',
       data,
-      { delay, jobId: `nudge:${dialogId}` }
+      { delay, jobId: `nudge-${dialogId}` }
     );
     logger.info({ dialogId, delayMs: delay }, 'Nudge deferred outside work hours');
     return;
@@ -134,7 +134,7 @@ export const processNudgeJob = async (data: TNudgeJob): Promise<void> => {
     await nudgeQueue.add(
       'send-nudge',
       { dialogId: dialog.id, communityId },
-      { delay: nextDelay, jobId: `nudge:${dialog.id}` }
+      { delay: nextDelay, jobId: `nudge-${dialog.id}` }
     );
   }
 

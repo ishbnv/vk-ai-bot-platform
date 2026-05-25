@@ -106,7 +106,7 @@ export const processDialogJob = async (data: TDialogJob): Promise<void> => {
     .where(eq(dialogs.id, dialog.id));
 
   // 5. Cancel pending nudge (если был запланирован)
-  await nudgeQueue.remove(`nudge:${dialog.id}`).catch(() => {
+  await nudgeQueue.remove(`nudge-${dialog.id}`).catch(() => {
     /* nothing to cancel */
   });
 
@@ -216,16 +216,21 @@ export const processDialogJob = async (data: TDialogJob): Promise<void> => {
     }
   }
 
-  // 13. Schedule nudge
+  // 13. Schedule nudge — ошибки тут НЕ роняют весь job, иначе при retry
+  // получим duplicate ответы в БД (см. ранее исправленный bug с error 100).
   if (community.nudge_delay_minutes > 0) {
-    await nudgeQueue.add(
-      'send-nudge',
-      { dialogId: dialog.id, communityId },
-      {
-        delay: community.nudge_delay_minutes * 60 * 1000,
-        jobId: `nudge:${dialog.id}`
-      }
-    );
+    try {
+      await nudgeQueue.add(
+        'send-nudge',
+        { dialogId: dialog.id, communityId },
+        {
+          delay: community.nudge_delay_minutes * 60 * 1000,
+          jobId: `nudge-${dialog.id}`
+        }
+      );
+    } catch (err) {
+      logger.error({ err, dialogId: dialog.id }, 'Failed to schedule nudge — пропускаем, без retry');
+    }
   }
 
   logger.info(
