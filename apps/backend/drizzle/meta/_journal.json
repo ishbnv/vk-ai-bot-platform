@@ -29,6 +29,13 @@
       "when": 1779734054683,
       "tag": "0003_tiny_nomad",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1779735556959,
+      "tag": "0004_fat_dazzler",
+      "breakpoints": true
     }
   ]
 }

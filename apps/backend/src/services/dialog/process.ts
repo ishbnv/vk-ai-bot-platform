@@ -217,12 +217,12 @@ export const processDialogJob = async (data: TDialogJob): Promise<void> => {
   }
 
   // 13. Schedule nudge
-  if (community.nudge_delay_hours > 0) {
+  if (community.nudge_delay_minutes > 0) {
     await nudgeQueue.add(
       'send-nudge',
       { dialogId: dialog.id, communityId },
       {
-        delay: community.nudge_delay_hours * 3600 * 1000,
+        delay: community.nudge_delay_minutes * 60 * 1000,
         jobId: `nudge:${dialog.id}`
       }
     );

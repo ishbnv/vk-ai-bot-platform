@@ -25,7 +25,7 @@ const schema = z.object({
   active_model: z.string().min(1),
   work_hours_start: z.number().int().min(0).max(24),
   work_hours_end: z.number().int().min(0).max(24),
-  nudge_delay_hours: z.number().int().min(0).max(72),
+  nudge_delay_minutes: z.number().int().min(0).max(4320),
   completion_silence_hours: z.number().int().min(1).max(720),
   context_window_messages: z.number().int().min(1).max(50),
   context_token_limit: z.number().int().min(500).max(32_000),
@@ -53,7 +53,7 @@ export const EditCommunitySettings: FC<TProps> = ({ community }) => {
       active_model: community.active_model,
       work_hours_start: community.work_hours_start,
       work_hours_end: community.work_hours_end,
-      nudge_delay_hours: community.nudge_delay_hours,
+      nudge_delay_minutes: community.nudge_delay_minutes,
       completion_silence_hours: community.completion_silence_hours,
       context_window_messages: community.context_window_messages,
       context_token_limit: community.context_token_limit,
@@ -152,16 +152,16 @@ export const EditCommunitySettings: FC<TProps> = ({ community }) => {
           />
           <Controller
             control={control}
-            name='nudge_delay_hours'
+            name='nudge_delay_minutes'
             render={({ field }) => (
               <NumberInput
-                label='Задержка до nudge, часов'
-                description='0 — выключить дожим'
+                label='Задержка до nudge, минут'
+                description='0 — выключить дожим. Для теста удобно 1–5 минут, для прод-сценария 60–180.'
                 min={0}
-                max={72}
+                max={4320}
                 value={field.value}
                 onChange={(v) => typeof v === 'number' && field.onChange(v)}
-                error={errors.nudge_delay_hours?.message}
+                error={errors.nudge_delay_minutes?.message}
               />
             )}
           />

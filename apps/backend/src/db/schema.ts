@@ -32,7 +32,9 @@ export const communities = pgTable(
     is_active: boolean('is_active').notNull().default(true),
     work_hours_start: smallint('work_hours_start').notNull().default(0),
     work_hours_end: smallint('work_hours_end').notNull().default(24),
-    nudge_delay_hours: smallint('nudge_delay_hours').notNull().default(3),
+    // Минуты, не часы — удобнее для тестов и точной настройки.
+    // По умолчанию 180 (=3ч) ради совместимости со старым поведением.
+    nudge_delay_minutes: integer('nudge_delay_minutes').notNull().default(180),
     completion_silence_hours: smallint('completion_silence_hours').notNull().default(24),
     forbidden_topics: jsonb('forbidden_topics')
       .$type<string[]>()

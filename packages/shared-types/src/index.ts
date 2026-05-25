@@ -28,7 +28,7 @@ export type TCommunity = {
   is_active: boolean;
   work_hours_start: number;
   work_hours_end: number;
-  nudge_delay_hours: number;
+  nudge_delay_minutes: number;
   completion_silence_hours: number;
   active_model: string;
   ab_test_enabled: boolean;
@@ -56,7 +56,7 @@ export type TPatchCommunityRequest = Partial<
     | 'is_active'
     | 'work_hours_start'
     | 'work_hours_end'
-    | 'nudge_delay_hours'
+    | 'nudge_delay_minutes'
     | 'completion_silence_hours'
     | 'active_model'
     | 'ab_test_enabled'

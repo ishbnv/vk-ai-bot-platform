@@ -130,7 +130,7 @@ export const processNudgeJob = async (data: TNudgeJob): Promise<void> => {
   // 9. Schedule next nudge with escalation (× 2) — только если был первый из двух
   const newCount = dialog.nudge_count + 1;
   if (newCount < MAX_NUDGES) {
-    const nextDelay = community.nudge_delay_hours * 3600 * 1000 * 2;
+    const nextDelay = community.nudge_delay_minutes * 60 * 1000 * 2;
     await nudgeQueue.add(
       'send-nudge',
       { dialogId: dialog.id, communityId },
