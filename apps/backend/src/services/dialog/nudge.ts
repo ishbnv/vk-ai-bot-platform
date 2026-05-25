@@ -7,6 +7,7 @@ import { decrypt } from '@/lib/crypto';
 import { chat } from '@/services/openrouter';
 import { messagesSend } from '@/services/vk';
 import { nudgeQueue, type TNudgeJob } from '@/queues';
+import { VkApiError } from '@/services/vk';
 
 import { buildContext } from './context';
 import { replacePlaceholders } from './placeholders';
@@ -121,21 +122,44 @@ export const processNudgeJob = async (data: TNudgeJob): Promise<void> => {
     })
     .where(eq(dialogs.id, dialog.id));
 
-  // 8. Send to VK
-  await messagesSend(decryptedToken, {
-    userId: dialog.vk_user_id,
-    message: finalText
-  });
+  // 8. Send to VK — пропускаем пустой текст, не ретраим VK validation-ошибки.
+  if (!finalText.trim()) {
+    logger.warn(
+      { dialogId: dialog.id, model },
+      'Empty nudge LLM response — skipping send, scheduling next nudge'
+    );
+  } else {
+    try {
+      await messagesSend(decryptedToken, {
+        userId: dialog.vk_user_id,
+        message: finalText
+      });
+    } catch (err) {
+      if (err instanceof VkApiError && err.code === 100) {
+        logger.error(
+          { err, dialogId: dialog.id, message: finalText },
+          'VK rejected nudge (error 100), завершаем job без retry'
+        );
+        return;
+      }
+      throw err;
+    }
+  }
 
-  // 9. Schedule next nudge with escalation (× 2) — только если был первый из двух
+  // 9. Schedule next nudge with escalation (× 2) — только если был первый из двух.
+  // Ошибки в schedule не валим — иначе при retry будет повторное LLM + send.
   const newCount = dialog.nudge_count + 1;
   if (newCount < MAX_NUDGES) {
-    const nextDelay = community.nudge_delay_minutes * 60 * 1000 * 2;
-    await nudgeQueue.add(
-      'send-nudge',
-      { dialogId: dialog.id, communityId },
-      { delay: nextDelay, jobId: `nudge-${dialog.id}` }
-    );
+    try {
+      const nextDelay = community.nudge_delay_minutes * 60 * 1000 * 2;
+      await nudgeQueue.add(
+        'send-nudge',
+        { dialogId: dialog.id, communityId },
+        { delay: nextDelay, jobId: `nudge-${dialog.id}` }
+      );
+    } catch (err) {
+      logger.error({ err, dialogId: dialog.id }, 'Failed to schedule next nudge');
+    }
   }
 
   logger.info(
