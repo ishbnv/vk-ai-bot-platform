@@ -12,6 +12,7 @@ import { redirectRoutes } from '@/api/redirect';
 import { communitiesRoutes } from '@/api/communities';
 import { promptsByCommunityRoutes, promptsTestRoutes } from '@/api/prompts';
 import { landingLinksRoutes } from '@/api/landing-links';
+import { offerPacksRoutes } from '@/api/offer-packs';
 import { dialogsByCommunityRoutes, dialogDetailRoutes } from '@/api/dialogs';
 import { metricsRoutes } from '@/api/metrics';
 import { modelsRoutes } from '@/api/models';
@@ -51,6 +52,7 @@ const registerRoutes = async () => {
   await app.register(communitiesRoutes, { prefix: '/api/communities' });
   await app.register(promptsByCommunityRoutes, { prefix: '/api/communities' });
   await app.register(landingLinksRoutes, { prefix: '/api/communities' });
+  await app.register(offerPacksRoutes, { prefix: '/api/communities' });
   await app.register(dialogsByCommunityRoutes, { prefix: '/api/communities' });
   await app.register(metricsRoutes, { prefix: '/api/communities' });
   await app.register(dialogDetailRoutes, { prefix: '/api/dialogs' });

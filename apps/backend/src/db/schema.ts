@@ -93,6 +93,27 @@ export const landing_links = pgTable(
   (t) => [uniqueIndex('landing_links_community_key_uq').on(t.community_id, t.placeholder_key)]
 );
 
+// --- offer_packs ---
+// Последовательные пачки готовых ссылок-офферов. Бот шлёт их по очереди
+// после показа витрины — на каждое сообщение пользователя следующую пачку.
+// Контент — многострочный текст вида "Название МФО 👉 https://...".
+export const offer_packs = pgTable(
+  'offer_packs',
+  {
+    id: uuid('id').defaultRandom().primaryKey(),
+    community_id: uuid('community_id')
+      .notNull()
+      .references(() => communities.id, { onDelete: 'cascade' }),
+    order_index: smallint('order_index').notNull(),
+    content: text('content').notNull(),
+    created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
+  },
+  (t) => [
+    uniqueIndex('offer_packs_community_order_uq').on(t.community_id, t.order_index),
+    index('offer_packs_community_idx').on(t.community_id, t.order_index)
+  ]
+);
+
 // --- dialogs ---
 export const dialogs = pgTable(
   'dialogs',
@@ -118,6 +139,8 @@ export const dialogs = pgTable(
     }),
     last_message_at: timestamp('last_message_at', { withTimezone: true }).notNull().defaultNow(),
     nudge_count: smallint('nudge_count').notNull().default(0),
+    // Сколько offer-пачек уже отправили в этот диалог — индекс следующей по order_index
+    packs_sent_count: smallint('packs_sent_count').notNull().default(0),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow()
   },
   (t) => [
@@ -206,6 +229,8 @@ export type TPrompt = typeof prompts.$inferSelect;
 export type TPromptInsert = typeof prompts.$inferInsert;
 export type TLandingLink = typeof landing_links.$inferSelect;
 export type TLandingLinkInsert = typeof landing_links.$inferInsert;
+export type TOfferPack = typeof offer_packs.$inferSelect;
+export type TOfferPackInsert = typeof offer_packs.$inferInsert;
 export type TDialog = typeof dialogs.$inferSelect;
 export type TDialogInsert = typeof dialogs.$inferInsert;
 export type TMessage = typeof messages.$inferSelect;

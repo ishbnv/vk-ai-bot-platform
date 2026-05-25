@@ -111,6 +111,15 @@ export type TLandingLink = {
   created_at: string;
 };
 
+// --- offer packs ---
+export type TOfferPack = {
+  id: string;
+  community_id: string;
+  order_index: number;
+  content: string;
+  created_at: string;
+};
+
 // --- dialogs ---
 export type TDialog = {
   id: string;
@@ -128,6 +137,7 @@ export type TDialog = {
   conversion_link_id: string | null;
   last_message_at: string;
   nudge_count: number;
+  packs_sent_count: number;
   created_at: string;
 };
 

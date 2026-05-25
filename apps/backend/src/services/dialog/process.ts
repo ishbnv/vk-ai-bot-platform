@@ -11,6 +11,7 @@ import { nudgeQueue, type TDialogJob } from '@/queues';
 
 import { buildContext } from './context';
 import { replacePlaceholders } from './placeholders';
+import { countPacks, replaceNextPackPlaceholder } from './offer-packs';
 
 export const processDialogJob = async (data: TDialogJob): Promise<void> => {
   const { communityId, event, eventId } = data;
@@ -115,11 +116,15 @@ export const processDialogJob = async (data: TDialogJob): Promise<void> => {
     .limit(1);
   if (!activePrompt) throw new Error(`No active prompt for community ${communityId}`);
 
-  // 7. Build context (token-aware)
-  const systemPrompt = activePrompt.system_prompt.replace(
-    /\{\{community_name\}\}/g,
-    community.name
-  );
+  // 7. Build context (token-aware) + служебная метка про остаток пачек —
+  // LLM нужна, чтобы понимать когда вставлять {{NEXT_PACK}} а когда прощаться.
+  const totalPacks = await countPacks(communityId);
+  const remainingPacks = Math.max(0, totalPacks - dialog.packs_sent_count);
+  const metaSuffix =
+    `\n\n[Служебно: пачек отправлено ${dialog.packs_sent_count} из ${totalPacks}. ` +
+    `Осталось: ${remainingPacks}.]`;
+  const systemPrompt =
+    activePrompt.system_prompt.replace(/\{\{community_name\}\}/g, community.name) + metaSuffix;
   const chatMessages = await buildContext(dialog.id, systemPrompt, {
     windowMessages: community.context_window_messages,
     tokenLimit: community.context_token_limit
@@ -131,12 +136,19 @@ export const processDialogJob = async (data: TDialogJob): Promise<void> => {
   // 9. Call OpenRouter
   const result = await chat({ model, messages: chatMessages });
 
-  // 10. Replace placeholders на UTM-ссылки через redirect-эндпоинт
-  const { text: finalText, linkSentId } = await replacePlaceholders(
+  // 10a. Replace LINK_* плейсхолдеры на UTM-ссылки через redirect-эндпоинт
+  const { text: textWithLinks, linkSentId } = await replacePlaceholders(
     result.content,
     communityId,
     dialog.id,
     vkUserId
+  );
+
+  // 10b. Replace {{NEXT_PACK}} на готовую пачку офферов — если LLM её попросила.
+  const { text: finalText, consumed: packConsumed } = await replaceNextPackPlaceholder(
+    textWithLinks,
+    communityId,
+    dialog.packs_sent_count
   );
 
   // 11. Save assistant message + update dialog totals
@@ -158,6 +170,10 @@ export const processDialogJob = async (data: TDialogJob): Promise<void> => {
       total_tokens_input: sql`${dialogs.total_tokens_input} + ${result.tokensIn}`,
       total_tokens_output: sql`${dialogs.total_tokens_output} + ${result.tokensOut}`,
       total_cost_usd: sql`${dialogs.total_cost_usd} + ${result.costUsd.toFixed(6)}::numeric`,
+      // Если только что реально подставили пачку — продвигаем счётчик на 1.
+      packs_sent_count: packConsumed
+        ? sql`${dialogs.packs_sent_count} + 1`
+        : dialogs.packs_sent_count,
       last_message_at: new Date()
     })
     .where(eq(dialogs.id, dialog.id));

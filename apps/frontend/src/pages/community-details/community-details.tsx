@@ -20,6 +20,7 @@ import {
 import { EditCommunitySettings } from '@features/edit-community-settings';
 import { PromptEditor } from '@features/prompt-editor';
 import { ManageLandingLinks } from '@features/manage-landing-links';
+import { ManageOfferPacks } from '@features/manage-offer-packs';
 
 export const CommunityDetails: FC = () => {
   const { id = '' } = useParams<{ id: string }>();
@@ -97,6 +98,7 @@ export const CommunityDetails: FC = () => {
           <Tabs.Tab value='settings'>Настройки</Tabs.Tab>
           <Tabs.Tab value='prompt'>Промпт</Tabs.Tab>
           <Tabs.Tab value='links'>Ссылки</Tabs.Tab>
+          <Tabs.Tab value='packs'>Пачки</Tabs.Tab>
         </Tabs.List>
 
         <Tabs.Panel value='settings' pt='md'>
@@ -107,6 +109,9 @@ export const CommunityDetails: FC = () => {
         </Tabs.Panel>
         <Tabs.Panel value='links' pt='md'>
           <ManageLandingLinks communityId={community.id} />
+        </Tabs.Panel>
+        <Tabs.Panel value='packs' pt='md'>
+          <ManageOfferPacks communityId={community.id} />
         </Tabs.Panel>
       </Tabs>
     </Stack>
