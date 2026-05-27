@@ -29,7 +29,9 @@ const schema = z.object({
   completion_silence_hours: z.number().int().min(1).max(720),
   context_window_messages: z.number().int().min(1).max(50),
   context_token_limit: z.number().int().min(500).max(32_000),
-  use_direct_links: z.boolean()
+  use_direct_links: z.boolean(),
+  bothunter_enabled: z.boolean(),
+  bothunter_grace_minutes: z.number().int().min(1).max(60)
 });
 type TForm = z.infer<typeof schema>;
 
@@ -57,7 +59,9 @@ export const EditCommunitySettings: FC<TProps> = ({ community }) => {
       completion_silence_hours: community.completion_silence_hours,
       context_window_messages: community.context_window_messages,
       context_token_limit: community.context_token_limit,
-      use_direct_links: community.use_direct_links
+      use_direct_links: community.use_direct_links,
+      bothunter_enabled: community.bothunter_enabled,
+      bothunter_grace_minutes: community.bothunter_grace_minutes
     }
   });
 
@@ -114,6 +118,37 @@ export const EditCommunitySettings: FC<TProps> = ({ community }) => {
               description='ВКЛ: бот шлёт сразу URL витрины с UTM (короче, но converted_at не фиксируется — метрика конверсии перестаёт работать). ВЫКЛ: через /r/<id> с трекингом клика.'
               checked={field.value}
               onChange={(e) => field.onChange(e.currentTarget.checked)}
+            />
+          )}
+        />
+
+        <Title order={4} mt='md'>
+          Сосуществование с BotHunter
+        </Title>
+        <Controller
+          control={control}
+          name='bothunter_enabled'
+          render={({ field }) => (
+            <Switch
+              label='В сообществе работает BotHunter (ИИ — fallback)'
+              description='ВКЛ: ИИ откладывает ответ на grace-период и отвечает только если BotHunter не отреагировал за это время. ВЫКЛ: ИИ отвечает мгновенно как обычно.'
+              checked={field.value}
+              onChange={(e) => field.onChange(e.currentTarget.checked)}
+            />
+          )}
+        />
+        <Controller
+          control={control}
+          name='bothunter_grace_minutes'
+          render={({ field }) => (
+            <NumberInput
+              label='Grace-период перед ответом ИИ, минут'
+              description='Сколько ждать BotHunter перед тем как ИИ возьмёт диалог. 3 минуты — разумный дефолт.'
+              min={1}
+              max={60}
+              value={field.value}
+              onChange={(v) => typeof v === 'number' && field.onChange(v)}
+              error={errors.bothunter_grace_minutes?.message}
             />
           )}
         />

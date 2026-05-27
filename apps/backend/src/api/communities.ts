@@ -26,6 +26,8 @@ const publicFields = {
   vk_photos_enabled: communities.vk_photos_enabled,
   vk_voice_enabled: communities.vk_voice_enabled,
   use_direct_links: communities.use_direct_links,
+  bothunter_enabled: communities.bothunter_enabled,
+  bothunter_grace_minutes: communities.bothunter_grace_minutes,
   created_at: communities.created_at,
   updated_at: communities.updated_at
 };
@@ -52,7 +54,9 @@ const patchSchema = z
     forbidden_topics: z.array(z.string()),
     vk_photos_enabled: z.boolean(),
     vk_voice_enabled: z.boolean(),
-    use_direct_links: z.boolean()
+    use_direct_links: z.boolean(),
+    bothunter_enabled: z.boolean(),
+    bothunter_grace_minutes: z.number().int().min(1).max(60)
   })
   .partial();
 

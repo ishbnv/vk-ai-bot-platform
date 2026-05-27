@@ -53,6 +53,10 @@ export const communities = pgTable(
     // true — {{LINK_SHOWCASE}} раскрывается в прямой URL с UTM (короткий, но без трекинга
     // converted_at). false — через /r/<linkId> (длиннее, но фиксируется первый клик).
     use_direct_links: boolean('use_direct_links').notNull().default(false),
+    // BotHunter работает в сообществе и закрывает ОСНОВНОЙ диалог. ИИ — fallback
+    // и включается ТОЛЬКО когда BotHunter не ответил за grace-период.
+    bothunter_enabled: boolean('bothunter_enabled').notNull().default(false),
+    bothunter_grace_minutes: integer('bothunter_grace_minutes').notNull().default(3),
     created_at: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updated_at: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow()
   },
@@ -147,6 +151,9 @@ export const dialogs = pgTable(
       onDelete: 'set null'
     }),
     last_message_at: timestamp('last_message_at', { withTimezone: true }).notNull().defaultNow(),
+    // Когда сообщество ответило юзеру НЕ через наш ИИ (BotHunter / менеджер).
+    // Используется для решения «BotHunter уже работает — не лезем».
+    last_external_reply_at: timestamp('last_external_reply_at', { withTimezone: true }),
     nudge_count: smallint('nudge_count').notNull().default(0),
     // Сколько offer-пачек уже отправили в этот диалог — индекс следующей по order_index
     packs_sent_count: smallint('packs_sent_count').notNull().default(0),

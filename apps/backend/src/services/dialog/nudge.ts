@@ -8,6 +8,7 @@ import { chat } from '@/services/openrouter';
 import { messagesSend } from '@/services/vk';
 import { nudgeQueue, type TNudgeJob } from '@/queues';
 import { VkApiError } from '@/services/vk';
+import { markOurRandomId } from '@/lib/our-replies';
 
 import { buildContext } from './context';
 import { replacePlaceholders } from './placeholders';
@@ -130,9 +131,12 @@ export const processNudgeJob = async (data: TNudgeJob): Promise<void> => {
     );
   } else {
     try {
+      const ourRandomId = Math.floor(Math.random() * 2_000_000_000);
+      await markOurRandomId(ourRandomId);
       await messagesSend(decryptedToken, {
         userId: dialog.vk_user_id,
-        message: finalText
+        message: finalText,
+        randomId: ourRandomId
       });
     } catch (err) {
       if (err instanceof VkApiError && err.code === 100) {

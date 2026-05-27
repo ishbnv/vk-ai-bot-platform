@@ -4,9 +4,14 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/db/client';
 import { communities, vk_events_processed } from '@/db/schema';
 import { logger } from '@/lib/logger';
-import { dialogQueue, type TDialogJob } from '@/queues';
+import {
+  dialogQueue,
+  externalReplyQueue,
+  type TDialogJob,
+  type TExternalReplyJob
+} from '@/queues';
 
-import { vkWebhookSchema, vkMessageNewObjectSchema } from './schemas';
+import { vkWebhookSchema, vkMessageNewObjectSchema, vkMessageReplyObjectSchema } from './schemas';
 
 export const vkWebhookRoutes = async (app: FastifyInstance) => {
   app.post('/vk', async (request, reply) => {
@@ -60,7 +65,7 @@ export const vkWebhookRoutes = async (app: FastifyInstance) => {
       return reply.type('text/plain').send('ok');
     }
 
-    // 7. Enqueue если это message_new — всё остальное логируем и игнорируем
+    // 7. Маршрутизация по типу события.
     if (event.type === 'message_new') {
       const objectParsed = vkMessageNewObjectSchema.safeParse(event.object);
       if (!objectParsed.success) {
@@ -71,12 +76,34 @@ export const vkWebhookRoutes = async (app: FastifyInstance) => {
         return reply.type('text/plain').send('ok');
       }
 
-      await dialogQueue.add('process', {
-        communityId: community.id,
-        event: objectParsed.data,
-        receivedAt: new Date().toISOString(),
-        eventId: event.event_id
-      } satisfies TDialogJob);
+      // Если в сообществе работает BotHunter — откладываем обработку на grace,
+      // даём BotHunter'у шанс ответить первым. Job сам проверит при пробуждении.
+      const delayMs = community.bothunter_enabled
+        ? community.bothunter_grace_minutes * 60 * 1000
+        : 0;
+
+      await dialogQueue.add(
+        'process',
+        {
+          communityId: community.id,
+          event: objectParsed.data,
+          receivedAt: new Date().toISOString(),
+          eventId: event.event_id
+        } satisfies TDialogJob,
+        delayMs > 0 ? { delay: delayMs } : undefined
+      );
+    } else if (event.type === 'message_reply') {
+      // Исходящее сообщение от сообщества (наш бот / BotHunter / менеджер).
+      // Воркер сам решит чьё именно по random_id в Redis.
+      const replyParsed = vkMessageReplyObjectSchema.safeParse(event.object);
+      if (replyParsed.success && replyParsed.data.peer_id !== undefined) {
+        await externalReplyQueue.add('reply', {
+          communityId: community.id,
+          vkUserId: replyParsed.data.peer_id,
+          randomId: replyParsed.data.random_id ?? null,
+          ts: new Date().toISOString()
+        } satisfies TExternalReplyJob);
+      }
     } else {
       logger.debug({ type: event.type }, 'Unhandled VK event type');
     }

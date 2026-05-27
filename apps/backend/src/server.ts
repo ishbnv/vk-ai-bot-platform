@@ -24,6 +24,7 @@ import { createDialogWorker } from '@/workers/dialog';
 import { createNudgeWorker } from '@/workers/nudge';
 import { createCompletionWorker } from '@/workers/completion';
 import { createEventsCleanupWorker } from '@/workers/events-cleanup';
+import { createExternalReplyWorker } from '@/workers/external-reply';
 import { redisConnection } from '@/lib/redis';
 import { pg } from '@/db/client';
 import type { Worker } from 'bullmq';
@@ -76,7 +77,8 @@ const start = async () => {
       createDialogWorker(),
       createNudgeWorker(),
       createCompletionWorker(),
-      createEventsCleanupWorker()
+      createEventsCleanupWorker(),
+      createExternalReplyWorker()
     );
     await bootstrapRepeatableJobs();
 

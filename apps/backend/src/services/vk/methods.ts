@@ -92,13 +92,19 @@ export type TMessagesSendArgs = {
   dontParseLinks?: boolean;
 };
 
+export type TMessagesSendResult = {
+  messageId: number;
+  randomId: number;
+};
+
 export const messagesSend = async (
   token: string,
   args: TMessagesSendArgs
-): Promise<number> => {
+): Promise<TMessagesSendResult> => {
   // random_id критичен: ВК дедуплицирует одинаковые сообщения за 1 час по этому id.
+  // Также используется в lib/our-replies для различения наших message_reply от BotHunter.
   const randomId = args.randomId ?? Math.floor(Math.random() * 2_000_000_000);
-  return vkCall<number>(
+  const messageId = await vkCall<number>(
     'messages.send',
     {
       user_id: args.userId,
@@ -109,4 +115,5 @@ export const messagesSend = async (
     },
     token
   );
+  return { messageId, randomId };
 };

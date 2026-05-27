@@ -9,6 +9,8 @@ import { chat } from '@/services/openrouter';
 import { usersGet, messagesSend, VkApiError } from '@/services/vk';
 import { nudgeQueue, type TDialogJob } from '@/queues';
 
+import { markOurRandomId } from '@/lib/our-replies';
+
 import { buildContext } from './context';
 import { replacePlaceholders } from './placeholders';
 import { countPacks, replaceNextPackPlaceholder } from './offer-packs';
@@ -36,6 +38,17 @@ export const processDialogJob = async (data: TDialogJob): Promise<void> => {
   if (!community.is_active) {
     logger.info({ communityId }, 'Community inactive — skipping dialog');
     return;
+  }
+
+  // 1a. Защита от устаревших job: если воркер лежал час и проснулся —
+  // юзер уже потерял интерес или ушёл к BotHunter, отвечать поздно.
+  if (community.bothunter_enabled) {
+    const msgAgeMs = Date.now() - event.message.date * 1000;
+    const graceMs = community.bothunter_grace_minutes * 60 * 1000;
+    if (msgAgeMs > graceMs + 30 * 60 * 1000) {
+      logger.info({ msgAgeMs, graceMs }, 'message_new stale beyond grace + 30m — dropping');
+      return;
+    }
   }
 
   // 2. Find or create dialog
@@ -82,6 +95,20 @@ export const processDialogJob = async (data: TDialogJob): Promise<void> => {
   }
 
   if (!dialog) throw new Error('Failed to find or create dialog');
+
+  // 2a. BotHunter взял диалог в свои руки за время grace? Тогда не вторгаемся.
+  // Проверяем что external reply пришёл ПОСЛЕ user message (event.message.date).
+  if (community.bothunter_enabled && dialog.last_external_reply_at) {
+    const userTs = event.message.date * 1000;
+    const externalTs = dialog.last_external_reply_at.getTime();
+    if (externalTs > userTs) {
+      logger.info(
+        { dialogId: dialog.id, externalTs, userTs },
+        'BotHunter or manager answered during grace — AI stays silent'
+      );
+      return;
+    }
+  }
 
   // 3. Save user message
   const attachments = (event.message.attachments ?? []).map((a) => ({
@@ -196,9 +223,14 @@ export const processDialogJob = async (data: TDialogJob): Promise<void> => {
     );
   } else {
     try {
+      // Резервируем random_id заранее и пишем его в Redis ДО отправки, иначе
+      // VK echo (message_reply) может прилететь раньше, чем мы пометили его как наш.
+      const ourRandomId = Math.floor(Math.random() * 2_000_000_000);
+      await markOurRandomId(ourRandomId);
       await messagesSend(decryptedToken, {
         userId: vkUserId,
         message: finalText,
+        randomId: ourRandomId,
         dontParseLinks: false
       });
     } catch (err) {

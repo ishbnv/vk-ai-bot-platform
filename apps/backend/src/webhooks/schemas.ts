@@ -28,3 +28,14 @@ export const vkMessageNewObjectSchema = z.object({
   })
 });
 export type TVkMessageNewObject = z.infer<typeof vkMessageNewObjectSchema>;
+
+// message_reply: исходящее сообщение от сообщества (наш бот / BotHunter / менеджер).
+// peer_id = кому отправлено (= vk_user_id юзера). random_id — то что задавал отправитель.
+export const vkMessageReplyObjectSchema = z.object({
+  from_id: z.number().int().optional(),
+  peer_id: z.number().int().optional(),
+  date: z.number().int().optional(),
+  random_id: z.number().int().optional(),
+  text: z.string().optional()
+});
+export type TVkMessageReplyObject = z.infer<typeof vkMessageReplyObjectSchema>;

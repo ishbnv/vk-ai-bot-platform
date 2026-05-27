@@ -39,6 +39,8 @@ export type TCommunity = {
   vk_photos_enabled: boolean;
   vk_voice_enabled: boolean;
   use_direct_links: boolean;
+  bothunter_enabled: boolean;
+  bothunter_grace_minutes: number;
   created_at: string;
   updated_at: string;
 };
@@ -67,6 +69,8 @@ export type TPatchCommunityRequest = Partial<
     | 'vk_photos_enabled'
     | 'vk_voice_enabled'
     | 'use_direct_links'
+    | 'bothunter_enabled'
+    | 'bothunter_grace_minutes'
   >
 >;
 

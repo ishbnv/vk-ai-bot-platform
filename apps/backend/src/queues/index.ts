@@ -18,7 +18,8 @@ export const QUEUE_NAMES = {
   metrics: 'metrics-aggregation',
   completion: 'dialog-completion',
   prices: 'prices-refresh',
-  eventsCleanup: 'vk-events-cleanup'
+  eventsCleanup: 'vk-events-cleanup',
+  externalReply: 'external-reply-processing'
 } as const;
 
 // --- queues ---
@@ -52,6 +53,11 @@ export const eventsCleanupQueue = new Queue(QUEUE_NAMES.eventsCleanup, {
   defaultJobOptions: { ...defaultJobOptions, attempts: 1 }
 });
 
+export const externalReplyQueue = new Queue(QUEUE_NAMES.externalReply, {
+  connection: redisConnection,
+  defaultJobOptions: { ...defaultJobOptions, attempts: 2 }
+});
+
 // --- job payload types ---
 export type TVkMessageNew = {
   message: {
@@ -81,6 +87,14 @@ export type TNudgeJob = {
 export type TPricesJob = Record<string, never>;
 export type TCompletionJob = Record<string, never>;
 export type TEventsCleanupJob = Record<string, never>;
+
+// message_reply от VK — для отслеживания BotHunter/менеджер активности
+export type TExternalReplyJob = {
+  communityId: string;
+  vkUserId: number; // peer_id (= кому ушло сообщение)
+  randomId: number | null;
+  ts: string; // ISO timestamp callback'а
+};
 
 // --- repeatable cron registration ---
 export const bootstrapRepeatableJobs = async () => {
@@ -125,6 +139,7 @@ export const closeQueues = async () => {
     metricsQueue.close(),
     completionQueue.close(),
     pricesQueue.close(),
-    eventsCleanupQueue.close()
+    eventsCleanupQueue.close(),
+    externalReplyQueue.close()
   ]);
 };
